@@ -50,8 +50,8 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
                   margin: const EdgeInsets.symmetric(vertical: 8),
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   decoration: BoxDecoration(
-                      color: flashDoctor
-                          ? Colors.blueAccent.withOpacity(.8)
+                        color: flashDoctor
+                          ? Colors.blueAccent.withAlpha((0.8 * 255).round())
                           : Colors.blueAccent,
                       borderRadius: BorderRadius.circular(12)),
                   child: const Center(

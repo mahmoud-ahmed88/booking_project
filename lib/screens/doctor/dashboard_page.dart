@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../settings/settings_page.dart';
 import 'appointment_screen.dart';
+import '../auth/role_selection_page.dart';
 
 class DashboardPage extends StatelessWidget {
   const DashboardPage({super.key});
@@ -97,15 +98,26 @@ class DashboardPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF3F4F6),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(18),
-          child:
-              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      body: WillPopScope(
+        onWillPop: () async {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const RoleSelectionPage()),
+          );
+          return false;
+        },
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(18),
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
               IconButton(
                 onPressed: () {
-                  Navigator.pop(context);
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (_) => const RoleSelectionPage()),
+                  );
                 },
                 icon: const Icon(Icons.arrow_back, color: Colors.black),
               ),
@@ -121,7 +133,7 @@ class DashboardPage extends StatelessWidget {
               )
             ]),
             const SizedBox(height: 15),
-            Row(children: const [
+            Row(children: [
               CircleAvatar(
                   radius: 32,
                   backgroundColor: Color(0xFFE6EEFF),
@@ -144,6 +156,7 @@ class DashboardPage extends StatelessWidget {
           ]),
         ),
       ),
-    );
+    ),
+  );
   }
 }

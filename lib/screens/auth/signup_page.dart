@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/thema.dart';
+import '../../data/fake_data.dart';
 import 'role_selection_page.dart';
 
 class SignUpPage extends StatefulWidget {
@@ -23,9 +24,11 @@ class _SignUpPageState extends State<SignUpPage> {
   }
 
   void _signup() {
-    // demo-only: go to role selection
+    // store demo user info and go to role selection
+    gCurrentUserName = _name.text.trim().isEmpty ? null : _name.text.trim();
+    gCurrentUserEmail = _email.text.trim().isEmpty ? null : _email.text.trim();
     Navigator.pushReplacement(
-        context, MaterialPageRoute(builder: (_) => const RoleSelectionPage()));
+      context, MaterialPageRoute(builder: (_) => const RoleSelectionPage()));
   }
 
   @override

@@ -3,6 +3,9 @@ import '../../models/doctor.dart';
 import '../patient/appointment_booking_page.dart';
 import '../../core/thema.dart';
 import '../../widget/pay_button.dart';
+import '../auth/role_selection_page.dart';
+import 'my_appointments_page.dart';
+import 'profile_page.dart';
 
 class DoctorProfilePage extends StatelessWidget {
   final Doctor doctor;
@@ -12,7 +15,32 @@ class DoctorProfilePage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => const RoleSelectionPage()),
+            );
+          },
+        ),
         title: Text(doctor.name),
+        actions: [
+          IconButton(
+            tooltip: 'Profile',
+            icon: const Icon(Icons.person),
+            onPressed: () {
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfilePage()));
+            },
+          ),
+          IconButton(
+            tooltip: 'Notifications',
+            icon: const Icon(Icons.notifications),
+            onPressed: () {
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const MyAppointmentsPage()));
+            },
+          ),
+        ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(18),

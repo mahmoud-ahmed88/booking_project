@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../auth/login_page.dart';
+import '../patient/profile_page.dart';
+import '../patient/my_appointments_page.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -10,13 +12,19 @@ class SettingsPage extends StatelessWidget {
       appBar: AppBar(title: const Text('Settings')),
       body: ListView(padding: const EdgeInsets.all(12), children: [
         ListTile(
-            leading: const Icon(Icons.person),
-            title: const Text('Profile'),
-            onTap: () {}),
+          leading: const Icon(Icons.person),
+          title: const Text('Profile'),
+          onTap: () {
+            Navigator.push(context,
+              MaterialPageRoute(builder: (_) => const ProfilePage()));
+          }),
         ListTile(
-            leading: const Icon(Icons.notifications),
-            title: const Text('Notifications'),
-            onTap: () {}),
+          leading: const Icon(Icons.notifications),
+          title: const Text('Notifications'),
+          onTap: () {
+            Navigator.push(context,
+              MaterialPageRoute(builder: (_) => const MyAppointmentsPage()));
+          }),
         ListTile(
           leading: const Icon(Icons.logout),
           title: const Text('Logout'),

@@ -17,6 +17,8 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
 
   String selectedBox = "";
   bool isSaved = false;
+  List<String> prescriptions = [];
+  List<String> notes = [];
 
   @override
   Widget build(BuildContext context) {
@@ -46,8 +48,8 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-                color: lightBlue.withOpacity(.1),
-                borderRadius: BorderRadius.circular(16)),
+              color: lightBlue.withAlpha((0.1 * 255).round()),
+              borderRadius: BorderRadius.circular(16)),
             child: Center(
                 child: Text("Wed, 12 May 24 | 11:30 PM",
                     style: TextStyle(
@@ -126,9 +128,9 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
       },
       child: Column(children: [
         CircleAvatar(
-            backgroundColor: color.withOpacity(.15),
-            radius: 26,
-            child: Icon(icon, color: color, size: 26)),
+          backgroundColor: color.withAlpha((0.15 * 255).round()),
+          radius: 26,
+          child: Icon(icon, color: color, size: 26)),
         const SizedBox(height: 6),
         Text(label,
             style: TextStyle(color: darkBlue, fontWeight: FontWeight.w600))
@@ -139,24 +141,13 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
   Widget _selectBox(String title) {
     bool selected = selectedBox == title;
     return GestureDetector(
-      onTap: () {
-        setState(() {
-          selectedBox = title;
-        });
-        Future.delayed(const Duration(seconds: 1), () {
-          if (mounted) {
-            setState(() {
-              selectedBox = "";
-            });
-          }
-        });
-      },
+      onTap: () => _openEditor(title),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 300),
         height: 120,
         decoration: BoxDecoration(
-            color: selected ? lightBlue.withOpacity(.2) : Colors.white,
-            borderRadius: BorderRadius.circular(14),
+        color: selected ? lightBlue.withAlpha((0.2 * 255).round()) : Colors.white,
+        borderRadius: BorderRadius.circular(14),
             border: Border.all(
                 color: selected ? lightBlue : Colors.grey.shade300, width: 2)),
         child: Center(
@@ -169,6 +160,83 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
     );
   }
 
+  void _openEditor(String title) {
+    setState(() => selectedBox = title);
+    final entries = title == 'Prescriptions' ? prescriptions : notes;
+    final TextEditingController ctl = TextEditingController();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(
+            bottom: MediaQuery.of(ctx).viewInsets.bottom, top: 12, left: 12, right: 12),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                IconButton(
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                    },
+                    icon: const Icon(Icons.close))
+              ],
+            ),
+            const SizedBox(height: 8),
+            if (entries.isEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 8.0),
+                child: Text('No items yet.'),
+              )
+            else
+              SizedBox(
+                height: 150,
+                child: ListView.builder(
+                    itemCount: entries.length,
+                    itemBuilder: (_, i) => ListTile(
+                          title: Text(entries[i]),
+                          trailing: IconButton(
+                              onPressed: () {
+                                setState(() => entries.removeAt(i));
+                                // rebuild sheet
+                                (ctx as Element).markNeedsBuild();
+                              },
+                              icon: const Icon(Icons.delete, color: Colors.red)),
+                        )),
+              ),
+            const SizedBox(height: 8),
+            Row(children: [
+              Expanded(
+                child: TextField(
+                  controller: ctl,
+                  decoration: InputDecoration(
+                      hintText: 'Add new ${title.toLowerCase()}', border: OutlineInputBorder(borderRadius: BorderRadius.circular(8))),
+                ),
+              ),
+              const SizedBox(width: 8),
+              ElevatedButton(
+                  onPressed: () {
+                    final text = ctl.text.trim();
+                    if (text.isEmpty) return;
+                    setState(() => entries.add(text));
+                    ctl.clear();
+                    (ctx as Element).markNeedsBuild();
+                  },
+                  child: const Text('Add'))
+            ]),
+            const SizedBox(height: 12),
+          ],
+        ),
+      ),
+    ).whenComplete(() {
+      setState(() => selectedBox = '');
+    });
+  }
+
   Widget _infoCard() {
     return Container(
       margin: const EdgeInsets.only(top: 10),
@@ -178,9 +246,9 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
           borderRadius: BorderRadius.circular(18),
           boxShadow: [
             BoxShadow(
-                color: Colors.black.withOpacity(.03),
-                blurRadius: 8,
-                offset: const Offset(0, 4))
+              color: Colors.black.withAlpha((0.03 * 255).round()),
+              blurRadius: 8,
+              offset: const Offset(0, 4))
           ]),
       child: Column(children: [
         _detailRow("Name", "Tasneem Ibrahim"),

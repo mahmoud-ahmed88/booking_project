@@ -37,7 +37,7 @@ class _MyAppointmentsPageState extends State<MyAppointmentsPage> {
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   child: ListTile(
                     leading: const Icon(Icons.calendar_month),
-                    title: Text('${b.doctorName}'),
+                    title: Text(b.doctorName),
                     subtitle: Text('${b.dateKey} • ${b.time}'),
                     trailing: IconButton(
                       icon: const Icon(Icons.delete, color: Colors.red),

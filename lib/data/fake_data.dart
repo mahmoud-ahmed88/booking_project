@@ -36,3 +36,7 @@ final List<Doctor> gDoctors = [
 
 final List<Booking> gMyBookings = [];
 
+// Simple current user storage (demo-only)
+String? gCurrentUserName;
+String? gCurrentUserEmail;
+
