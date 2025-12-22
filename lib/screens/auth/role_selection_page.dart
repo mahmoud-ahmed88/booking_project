@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import '../doctor/dashboard_page.dart';
-import '../patient/doctor_list_page.dart';
-import 'login_page.dart';
+import '../../core/config/routes/routes.dart';
+import '../../core/thema.dart';
+import '../../services/firestore_service.dart';
 
 class RoleSelectionPage extends StatefulWidget {
   const RoleSelectionPage({super.key});
@@ -11,87 +11,90 @@ class RoleSelectionPage extends StatefulWidget {
 }
 
 class _RoleSelectionPageState extends State<RoleSelectionPage> {
-  bool flashDoctor = false;
-  bool flashPatient = false;
+  bool _isLoading = false;
+  final FirestoreService _firestoreService = FirestoreService();
 
-  void _flash(VoidCallback on, VoidCallback off) {
-    on();
-    Future.delayed(const Duration(milliseconds: 140), off);
+  /// Saves the selected role to Firestore and navigates the user.
+  Future<void> _selectRole(String role) async {
+    setState(() => _isLoading = true);
+
+    try {
+      // Call the service to save the user's role
+      await _firestoreService.setUserRole(role);
+
+      if (!mounted) return;
+
+      // Navigate to the appropriate home screen based on the role
+      final destination =
+          role == 'Doctor' ? AppRoutes.doctorHome : AppRoutes.patientHome;
+      Navigator.pushReplacementNamed(context, destination);
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to save role: $e')),
+        );
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 28),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              const SizedBox(height: 40),
-              const Center(
-                  child: Text('Welcome to DocLine',
-                      style: TextStyle(
-                          fontSize: 24, fontWeight: FontWeight.bold))),
-              const SizedBox(height: 10),
-              const Text('Please select your role to continue',
-                  style: TextStyle(color: Colors.grey)),
-              const SizedBox(height: 40),
-              GestureDetector(
-                onTap: () {
-                  _flash(() => setState(() => flashDoctor = true),
-                      () => setState(() => flashDoctor = false));
-                  Navigator.pushReplacement(context,
-                      MaterialPageRoute(builder: (_) => const DashboardPage()));
-                },
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 120),
-                  width: double.infinity,
-                  margin: const EdgeInsets.symmetric(vertical: 8),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  decoration: BoxDecoration(
-                        color: flashDoctor
-                          ? Colors.blueAccent.withAlpha((0.8 * 255).round())
-                          : Colors.blueAccent,
-                      borderRadius: BorderRadius.circular(12)),
-                  child: const Center(
-                      child: Text("I'm a Doctor",
-                          style: TextStyle(color: Colors.white, fontSize: 18))),
-                ),
-              ),
-              GestureDetector(
-                onTap: () {
-                  _flash(() => setState(() => flashPatient = true),
-                      () => setState(() => flashPatient = false));
-                  Navigator.pushReplacement(
+      appBar: AppBar(
+        title: const Text('Select Your Role'),
+        automaticallyImplyLeading: false, // To prevent going back to signup
+      ),
+      body: Center(
+        child: _isLoading
+            ? const CircularProgressIndicator()
+            : Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Text(
+                      'How will you be using this app?',
+                      textAlign: TextAlign.center,
+                      style:
+                          TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 40),
+                    _roleButton(
                       context,
-                      MaterialPageRoute(
-                          builder: (_) => const DoctorListPage()));
-                },
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 120),
-                  width: double.infinity,
-                  margin: const EdgeInsets.symmetric(vertical: 8),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  decoration: BoxDecoration(
-                      color:
-                          flashPatient ? Colors.green.shade700 : Colors.green,
-                      borderRadius: BorderRadius.circular(12)),
-                  child: const Center(
-                      child: Text("I'm a Patient",
-                          style: TextStyle(color: Colors.white, fontSize: 18))),
+                      icon: Icons.local_hospital,
+                      label: "I'm a Doctor",
+                      onTap: () => _selectRole('Doctor'),
+                    ),
+                    const SizedBox(height: 20),
+                    _roleButton(
+                      context,
+                      icon: Icons.person,
+                      label: "I'm a Patient",
+                      onTap: () => _selectRole('Patient'),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 20),
-              TextButton(
-                onPressed: () {
-                  Navigator.pushReplacement(context,
-                      MaterialPageRoute(builder: (_) => const LoginPage()));
-                },
-                child: const Text('Back to Login'),
-              )
-            ],
-          ),
+      ),
+    );
+  }
+
+  Widget _roleButton(BuildContext context,
+      {required IconData icon,
+      required String label,
+      required VoidCallback onTap}) {
+    return ElevatedButton.icon(
+      onPressed: onTap,
+      icon: Icon(icon, size: 28),
+      label: Text(label, style: const TextStyle(fontSize: 18)),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: kPrimary,
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
         ),
       ),
     );

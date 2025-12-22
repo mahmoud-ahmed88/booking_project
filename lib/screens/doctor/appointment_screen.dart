@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../auth/role_selection_page.dart';
 
 class AppointmentScreen extends StatefulWidget {
-  const AppointmentScreen({super.key});
+  final String appointmentId; // Firestore doc ID
+  const AppointmentScreen({super.key, required this.appointmentId});
 
   @override
   State<AppointmentScreen> createState() => _AppointmentScreenState();
@@ -20,8 +23,84 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
   List<String> prescriptions = [];
   List<String> notes = [];
 
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+
+  Map<String, dynamic>? appointmentData;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAppointment();
+  }
+
+  Future<void> _loadAppointment() async {
+    final doc = await _firestore
+        .collection('users')
+        .doc(_auth.currentUser!.uid)
+        .collection('appointments')
+        .doc(widget.appointmentId)
+        .get();
+    if (doc.exists) {
+      setState(() {
+        appointmentData = doc.data();
+        selectedAction = appointmentData?['status'] ?? '';
+        selectedColor = _actionColor(selectedAction);
+        prescriptions = List<String>.from(appointmentData?['prescriptions'] ?? []);
+        notes = List<String>.from(appointmentData?['notes'] ?? []);
+      });
+    }
+  }
+
+  Future<void> _saveAppointment() async {
+    if (_auth.currentUser == null) return;
+
+    final data = {
+      'status': selectedAction,
+      'prescriptions': prescriptions,
+      'notes': notes,
+      'updatedAt': FieldValue.serverTimestamp(),
+    };
+
+    await _firestore
+        .collection('users')
+        .doc(_auth.currentUser!.uid)
+        .collection('appointments')
+        .doc(widget.appointmentId)
+        .set(data, SetOptions(merge: true));
+
+    setState(() => isSaved = true);
+  }
+
+  Color _actionColor(String action) {
+    switch (action) {
+      case 'Completed':
+        return Colors.green;
+      case 'Cancel':
+        return Colors.red;
+      case 'Reschedule':
+        return Colors.orange;
+      default:
+        return Colors.transparent;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (appointmentData == null) {
+      return const Scaffold(
+          body: Center(child: CircularProgressIndicator()));
+    }
+
+    final info = appointmentData?['patientInfo'] ?? {
+      'Name': 'Unknown',
+      'Age': '',
+      'Gender': '',
+      'Phone': '',
+      'Address': '',
+      'History': ''
+    };
+
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
@@ -51,11 +130,15 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
               color: lightBlue.withAlpha((0.1 * 255).round()),
               borderRadius: BorderRadius.circular(16)),
             child: Center(
-                child: Text("Wed, 12 May 24 | 11:30 PM",
-                    style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: darkBlue))),
+              child: Text(
+                appointmentData?['date'] ?? "Unknown Date",
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: darkBlue
+                ),
+              ),
+            ),
           ),
           const SizedBox(height: 20),
           Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: [
@@ -72,7 +155,7 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
                     fontSize: 16)),
           const SizedBox(height: 25),
           _sectionTitle("Patient Information"),
-          _infoCard(),
+          _infoCard(info),
           const SizedBox(height: 22),
           _sectionTitle("Prescriptions & Notes"),
           const SizedBox(height: 10),
@@ -96,12 +179,8 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(18))),
-              onPressed: () {
-                setState(() {
-                  isSaved = true;
-                });
-              },
-              child: Text(isSaved ? "Done ✅" : "Save Appointment",
+              onPressed: _saveAppointment,
+              child: Text(isSaved ? "Saved ✅" : "Save Appointment",
                   style: const TextStyle(fontSize: 16)),
             ),
           ),
@@ -128,9 +207,9 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
       },
       child: Column(children: [
         CircleAvatar(
-          backgroundColor: color.withAlpha((0.15 * 255).round()),
-          radius: 26,
-          child: Icon(icon, color: color, size: 26)),
+            backgroundColor: color.withAlpha((0.15 * 255).round()),
+            radius: 26,
+            child: Icon(icon, color: color, size: 26)),
         const SizedBox(height: 6),
         Text(label,
             style: TextStyle(color: darkBlue, fontWeight: FontWeight.w600))
@@ -146,8 +225,8 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
         duration: const Duration(milliseconds: 300),
         height: 120,
         decoration: BoxDecoration(
-        color: selected ? lightBlue.withAlpha((0.2 * 255).round()) : Colors.white,
-        borderRadius: BorderRadius.circular(14),
+            color: selected ? lightBlue.withAlpha((0.2 * 255).round()) : Colors.white,
+            borderRadius: BorderRadius.circular(14),
             border: Border.all(
                 color: selected ? lightBlue : Colors.grey.shade300, width: 2)),
         child: Center(
@@ -202,7 +281,6 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
                           trailing: IconButton(
                               onPressed: () {
                                 setState(() => entries.removeAt(i));
-                                // rebuild sheet
                                 (ctx as Element).markNeedsBuild();
                               },
                               icon: const Icon(Icons.delete, color: Colors.red)),
@@ -237,7 +315,7 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
     });
   }
 
-  Widget _infoCard() {
+  Widget _infoCard(Map<String, dynamic> info) {
     return Container(
       margin: const EdgeInsets.only(top: 10),
       padding: const EdgeInsets.all(14),
@@ -246,28 +324,28 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
           borderRadius: BorderRadius.circular(18),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withAlpha((0.03 * 255).round()),
-              blurRadius: 8,
-              offset: const Offset(0, 4))
+                color: Colors.black.withAlpha((0.03 * 255).round()),
+                blurRadius: 8,
+                offset: const Offset(0, 4))
           ]),
       child: Column(children: [
-        _detailRow("Name", "Tasneem Ibrahim"),
-        _detailRow("Age", "26"),
-        _detailRow("Gender", "Female"),
-        _detailRow("Phone", "01598563214"),
-        _detailRow("Address", "Assiut"),
-        _detailRow("History", "No")
+        _detailRow("Name", info['Name']),
+        _detailRow("Age", info['Age']),
+        _detailRow("Gender", info['Gender']),
+        _detailRow("Phone", info['Phone']),
+        _detailRow("Address", info['Address']),
+        _detailRow("History", info['History'])
       ]),
     );
   }
 
-  Widget _detailRow(String title, String value) {
+  Widget _detailRow(String title, String? value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(children: [
         Expanded(child: Text(title, style: TextStyle(color: darkBlue))),
         Expanded(
-            child: Text(value, style: const TextStyle(color: Colors.black87)))
+            child: Text(value ?? '', style: const TextStyle(color: Colors.black87)))
       ]),
     );
   }

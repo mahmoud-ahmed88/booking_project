@@ -1,10 +1,30 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../settings/settings_page.dart';
-import 'appointment_screen.dart';
+import '../doctor/appointment_screen.dart';
 import '../auth/role_selection_page.dart';
 
-class DashboardPage extends StatelessWidget {
+class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
+
+  @override
+  State<DashboardPage> createState() => _DashboardPageState();
+}
+
+class _DashboardPageState extends State<DashboardPage> {
+  ModalRoute<dynamic>? _route;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+
+  Future<bool> _onWillPop() async {
+    if (!mounted) return true;
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => const RoleSelectionPage()),
+    );
+    return false;
+  }
 
   Widget _title(String text) {
     return Padding(
@@ -17,12 +37,141 @@ class DashboardPage extends StatelessWidget {
     );
   }
 
-  Widget _appointmentItem(
-      String name, String time, IconData icon, BuildContext context) {
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final route = ModalRoute.of(context);
+    if (_route != route) {
+      // ignore: deprecated_member_use
+      _route?.removeScopedWillPopCallback(_onWillPop);
+      _route = route;
+      // ignore: deprecated_member_use
+      _route?.addScopedWillPopCallback(_onWillPop);
+    }
+  }
+
+  @override
+  void dispose() {
+    // ignore: deprecated_member_use
+    _route?.removeScopedWillPopCallback(_onWillPop);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final uid = _auth.currentUser?.uid;
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFF3F4F6),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(18),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              IconButton(
+                onPressed: () {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (_) => const RoleSelectionPage()),
+                  );
+                },
+                icon: const Icon(Icons.arrow_back, color: Colors.black),
+              ),
+              const Text("Docline",
+                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+              const Spacer(),
+              IconButton(
+                onPressed: () {
+                  Navigator.push(context,
+                      MaterialPageRoute(builder: (_) => const SettingsPage()));
+                },
+                icon: const Icon(Icons.settings, size: 28, color: Colors.blue),
+              )
+            ]),
+            const SizedBox(height: 15),
+            Row(children: [
+              const CircleAvatar(
+                  radius: 32,
+                  backgroundColor: Color(0xFFE6EEFF),
+                  child: Icon(Icons.person, size: 30, color: Color(0xFF1E40AF))),
+              const SizedBox(width: 12),
+              Text("Welcome, Dr. User",
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+            ]),
+            const SizedBox(height: 20),
+            _title("Upcoming Appointments"),
+            StreamBuilder<QuerySnapshot>(
+              stream: _firestore
+                  .collection('users')
+                  .doc(uid)
+                  .collection('appointments')
+                  .orderBy('date')
+                  .limit(5)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (!snapshot.hasData) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                final docs = snapshot.data!.docs;
+                if (docs.isEmpty) {
+                  return const Text("No upcoming appointments.");
+                }
+                return Column(
+                  children: docs.map((doc) {
+                    final data = doc.data() as Map<String, dynamic>;
+                    return _appointmentItem(
+                      data['patientName'] ?? 'Unknown',
+                      data['time'] ?? '',
+                      Icons.person,
+                      context,
+                      doc.id,
+                    );
+                  }).toList(),
+                );
+              },
+            ),
+            _title("Recent Invoices"),
+            StreamBuilder<QuerySnapshot>(
+              stream: _firestore
+                  .collection('users')
+                  .doc(uid)
+                  .collection('invoices')
+                  .orderBy('date', descending: true)
+                  .limit(5)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (!snapshot.hasData) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                final docs = snapshot.data!.docs;
+                if (docs.isEmpty) {
+                  return const Text("No recent invoices.");
+                }
+                return Column(
+                  children: docs.map((doc) {
+                    final data = doc.data() as Map<String, dynamic>;
+                    return _invoiceItem(
+                        data['patientName'] ?? 'Unknown',
+                        data['amount']?.toString() ?? '\$0.00',
+                        Icons.person);
+                  }).toList(),
+                );
+              },
+            ),
+          ]),
+        ),
+      ),
+    );
+  }
+
+  Widget _appointmentItem(String name, String time, IconData icon,
+      BuildContext context, String docId) {
     return InkWell(
       onTap: () {
-        Navigator.push(context,
-            MaterialPageRoute(builder: (_) => const AppointmentScreen()));
+        Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (_) => AppointmentScreen(appointmentId: docId)));
       },
       child: Container(
         padding: const EdgeInsets.all(14),
@@ -84,7 +233,7 @@ class DashboardPage extends StatelessWidget {
                 Text(name,
                     style: const TextStyle(
                         fontSize: 17, fontWeight: FontWeight.bold)),
-                const Text("Invoice #1204",
+                const Text("Invoice",
                     style: TextStyle(color: Colors.black54))
               ])),
           Text(amount,
@@ -92,71 +241,5 @@ class DashboardPage extends StatelessWidget {
         ]),
       ),
     );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF3F4F6),
-      body: WillPopScope(
-        onWillPop: () async {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => const RoleSelectionPage()),
-          );
-          return false;
-        },
-        child: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(18),
-            child:
-                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(children: [
-              IconButton(
-                onPressed: () {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(builder: (_) => const RoleSelectionPage()),
-                  );
-                },
-                icon: const Icon(Icons.arrow_back, color: Colors.black),
-              ),
-              const Text("Docline",
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-              const Spacer(),
-              IconButton(
-                onPressed: () {
-                  Navigator.push(context,
-                      MaterialPageRoute(builder: (_) => const SettingsPage()));
-                },
-                icon: const Icon(Icons.settings, size: 28, color: Colors.blue),
-              )
-            ]),
-            const SizedBox(height: 15),
-            Row(children: [
-              CircleAvatar(
-                  radius: 32,
-                  backgroundColor: Color(0xFFE6EEFF),
-                  child:
-                      Icon(Icons.person, size: 30, color: Color(0xFF1E40AF))),
-              SizedBox(width: 12),
-              Text("Welcome, Dr. Ahmed",
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-            ]),
-            const SizedBox(height: 20),
-            _title("Upcoming Appointments"),
-            _appointmentItem("Omar Mohamed", "10:00 AM", Icons.person, context),
-            _appointmentItem(
-                "Tasneem Ibrahim", "11:30 AM", Icons.person, context),
-            _appointmentItem(
-                "Abdelrhman Amged", "2:00 PM", Icons.person, context),
-            _title("Recent Invoices"),
-            _invoiceItem("Omar Mohamed", "\$250.00", Icons.person),
-            _invoiceItem("Abdelrhman Amged", "\$190.00", Icons.person),
-          ]),
-        ),
-      ),
-    ),
-  );
   }
 }

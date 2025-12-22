@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../models/doctor.dart';
 import '../../models/booking.dart';
-import '../../data/fake_data.dart';
 import '../../core/thema.dart';
+import '../../services/firestore_service.dart';
 
 class AppointmentBookingPage extends StatefulWidget {
   final Doctor doctor;
   const AppointmentBookingPage({super.key, required this.doctor});
 
   @override
-  State<AppointmentBookingPage> createState() => _AppointmentBookingPageState();
+  State<AppointmentBookingPage> createState() =>
+      _AppointmentBookingPageState();
 }
 
 class _AppointmentBookingPageState extends State<AppointmentBookingPage> {
@@ -28,12 +30,12 @@ class _AppointmentBookingPageState extends State<AppointmentBookingPage> {
   String get dateKey =>
       "${selectedDate.year}-${selectedDate.month}-${selectedDate.day}";
 
+  final _auth = FirebaseAuth.instance;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Book Appointment'),
-      ),
+      appBar: AppBar(title: const Text('Book Appointment')),
       body: Padding(
         padding: const EdgeInsets.all(14),
         child: Column(
@@ -42,7 +44,8 @@ class _AppointmentBookingPageState extends State<AppointmentBookingPage> {
               children: [
                 Expanded(
                   child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(backgroundColor: kPrimary),
+                    style:
+                        ElevatedButton.styleFrom(backgroundColor: kPrimary),
                     onPressed: _pickDate,
                     icon: const Icon(Icons.calendar_today),
                     label: Text('Date: $dateKey'),
@@ -62,22 +65,28 @@ class _AppointmentBookingPageState extends State<AppointmentBookingPage> {
             ),
             const SizedBox(height: 14),
             const Align(
-                alignment: Alignment.centerLeft,
-                child: Text('Select Time',
-                    style:
-                        TextStyle(fontSize: 16, fontWeight: FontWeight.bold))),
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'Select Time',
+                style:
+                    TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+            ),
             const SizedBox(height: 10),
             Expanded(
               child: GridView.builder(
                 itemCount: times.length,
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 3,
-                    mainAxisSpacing: 12,
-                    crossAxisSpacing: 12,
-                    childAspectRatio: 2.6),
+                gridDelegate:
+                    const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 3,
+                  mainAxisSpacing: 12,
+                  crossAxisSpacing: 12,
+                  childAspectRatio: 2.6,
+                ),
                 itemBuilder: (context, idx) {
                   final time = times[idx];
-                  final booked = widget.doctor.isBooked(dateKey, time);
+                  final booked =
+                      widget.doctor.isBooked(dateKey, time);
                   final selected = selectedIndex == idx;
 
                   return GestureDetector(
@@ -99,10 +108,11 @@ class _AppointmentBookingPageState extends State<AppointmentBookingPage> {
                       child: Text(
                         time,
                         style: TextStyle(
-                            color: booked || selected
-                                ? Colors.white
-                                : Colors.black,
-                            fontWeight: FontWeight.bold),
+                          color: booked || selected
+                              ? Colors.white
+                              : Colors.black,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   );
@@ -112,8 +122,10 @@ class _AppointmentBookingPageState extends State<AppointmentBookingPage> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: kPrimary),
-                onPressed: selectedIndex == -1 ? null : _confirmBooking,
+                style:
+                    ElevatedButton.styleFrom(backgroundColor: kPrimary),
+                onPressed:
+                    selectedIndex == -1 ? null : _confirmBooking,
                 child: const Padding(
                   padding: EdgeInsets.symmetric(vertical: 12),
                   child: Text('Confirm Booking'),
@@ -134,6 +146,7 @@ class _AppointmentBookingPageState extends State<AppointmentBookingPage> {
       firstDate: now,
       lastDate: DateTime(now.year + 2),
     );
+
     if (picked != null) {
       setState(() {
         selectedDate = picked;
@@ -142,17 +155,22 @@ class _AppointmentBookingPageState extends State<AppointmentBookingPage> {
     }
   }
 
-  void _confirmBooking() {
+  Future<void> _confirmBooking() async {
     final time = times[selectedIndex];
     final key = dateKey;
 
     if (widget.doctor.isBooked(key, time)) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('This time was just booked. Choose another.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content:
+              Text('This time was just booked. Choose another.'),
+        ),
+      );
       setState(() => selectedIndex = -1);
       return;
     }
 
+    // Local booking state
     widget.doctor.book(key, time);
 
     final booking = Booking(
@@ -161,24 +179,36 @@ class _AppointmentBookingPageState extends State<AppointmentBookingPage> {
       doctorName: widget.doctor.name,
       dateKey: key,
       time: time,
+      userId: _auth.currentUser?.uid ?? '',
     );
-    gMyBookings.add(booking);
 
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Appointment Confirmed ✅'),
-        content: Text('Doctor: ${widget.doctor.name}\nDate: $key\nTime: $time'),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context); // close dialog
-              Navigator.pop(context); // back to profile
-            },
-            child: const Text('OK'),
-          )
-        ],
-      ),
-    );
+    try {
+      await FirestoreService().addBooking(booking); // 🔥 Firebase
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Text('Appointment Confirmed ✅'),
+          content: Text(
+            'Doctor: ${widget.doctor.name}\nDate: $key\nTime: $time',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                Navigator.pop(context);
+              },
+              child: const Text('OK'),
+            )
+          ],
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to save booking: $e')),
+        );
+      }
+    }
   }
 }

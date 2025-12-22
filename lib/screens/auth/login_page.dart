@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../core/thema.dart';
 import 'signup_page.dart';
-import 'role_selection_page.dart';
+import '../auth/role_selection_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -16,6 +17,9 @@ class _LoginPageState extends State<LoginPage> {
   bool _obscure = true;
   bool _emailError = false;
   bool _passError = false;
+  bool _isLoading = false;
+
+  final FirebaseAuth _auth = FirebaseAuth.instance;
 
   @override
   void dispose() {
@@ -24,17 +28,52 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
-  void _tryLogin() {
+  Future<void> _tryLogin() async {
     setState(() {
       _emailError = !_emailCtrl.text.contains('@');
       _passError = _passCtrl.text.isEmpty;
     });
     if (_emailError || _passError) return;
 
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => const RoleSelectionPage()),
-    );
+    setState(() => _isLoading = true);
+
+    try {
+      // Firebase sign-in
+      await _auth.signInWithEmailAndPassword(
+        email: _emailCtrl.text.trim(),
+        password: _passCtrl.text.trim(),
+      );
+
+      if (!mounted) return;
+
+      setState(() => _isLoading = false);
+
+      // Navigate to role selection page
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const RoleSelectionPage()),
+      );
+    } on FirebaseAuthException catch (e) {
+      setState(() => _isLoading = false);
+
+      String message = 'Login failed';
+      if (e.code == 'user-not-found') {
+        message = 'No account found. Please sign up first.';
+      } else if (e.code == 'wrong-password') {
+        message = 'Invalid credentials';
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(message)));
+      }
+    } catch (e) {
+      setState(() => _isLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.toString())));
+      }
+    }
   }
 
   @override
@@ -48,7 +87,6 @@ class _LoginPageState extends State<LoginPage> {
             child: Column(
               children: [
                 const SizedBox(height: 20),
-                // optional logo
                 const Icon(Icons.local_hospital, size: 92, color: kPrimary),
                 const SizedBox(height: 14),
                 const Text('DOCLINE',
@@ -126,15 +164,23 @@ class _LoginPageState extends State<LoginPage> {
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12))),
-                    onPressed: _tryLogin,
-                    child: const Text('Log In'),
+                    onPressed: _isLoading ? null : _tryLogin,
+                    child: _isLoading
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                                color: Colors.white, strokeWidth: 2))
+                        : const Text('Log In'),
                   ),
                 ),
                 const SizedBox(height: 8),
                 TextButton(
                   onPressed: () {
-                    Navigator.push(context,
-                        MaterialPageRoute(builder: (_) => const SignUpPage()));
+                    Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => const SignUpPage()));
                   },
                   child: const Text("Don't have an account? Sign Up"),
                 ),

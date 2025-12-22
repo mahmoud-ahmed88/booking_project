@@ -4,6 +4,7 @@ class Booking {
   final String doctorName;
   final String dateKey;
   final String time;
+  final String userId;
 
   Booking({
     required this.id,
@@ -11,5 +12,6 @@ class Booking {
     required this.doctorName,
     required this.dateKey,
     required this.time,
+    required this.userId,
   });
 }

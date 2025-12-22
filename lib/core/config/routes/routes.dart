@@ -28,7 +28,13 @@ class AppRoutes {
     role: (_) => const RoleSelectionPage(),
     patientHome: (_) => const DoctorListPage(),
     doctorHome: (_) => const DashboardPage(),
-    doctorAppointments: (_) => const AppointmentScreen(),
+    doctorAppointments: (ctx) {
+      final args = ModalRoute.of(ctx)!.settings.arguments;
+      if (args != null && args is String) {
+        return AppointmentScreen(appointmentId: args);
+      }
+      return const DashboardPage();
+    },
     doctorProfile: (ctx) {
       final args = ModalRoute.of(ctx)!.settings.arguments;
       if (args != null) {
