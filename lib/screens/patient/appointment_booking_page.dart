@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import '../../models/doctor.dart';
 import '../../models/booking.dart';
 import '../../core/thema.dart';
 import '../../services/firestore_service.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AppointmentBookingPage extends StatefulWidget {
   final Doctor doctor;
@@ -30,7 +30,7 @@ class _AppointmentBookingPageState extends State<AppointmentBookingPage> {
   String get dateKey =>
       "${selectedDate.year}-${selectedDate.month}-${selectedDate.day}";
 
-  final _auth = FirebaseAuth.instance;
+  final SupabaseClient _supabase = Supabase.instance.client;
 
   @override
   Widget build(BuildContext context) {
@@ -179,11 +179,11 @@ class _AppointmentBookingPageState extends State<AppointmentBookingPage> {
       doctorName: widget.doctor.name,
       dateKey: key,
       time: time,
-      userId: _auth.currentUser?.uid ?? '',
+      userId: _supabase.auth.currentUser?.id ?? '',
     );
 
     try {
-      await FirestoreService().addBooking(booking); // 🔥 Firebase
+      await FirestoreService().addBooking(booking);
       if (!mounted) return;
       showDialog(
         context: context,

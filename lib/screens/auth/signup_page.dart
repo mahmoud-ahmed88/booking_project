@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/thema.dart';
 import 'role_selection_page.dart';
 
@@ -16,7 +16,7 @@ class _SignUpPageState extends State<SignUpPage> {
   final _passCtrl = TextEditingController();
   bool _isLoading = false;
 
-  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final SupabaseClient _supabase = Supabase.instance.client;
 
   @override
   void dispose() {
@@ -48,16 +48,12 @@ class _SignUpPageState extends State<SignUpPage> {
     setState(() => _isLoading = true);
 
     try {
-      // إنشاء مستخدم جديد على Firebase
-      UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
+      // إنشاء مستخدم جديد على Supabase
+      await _supabase.auth.signUp(
         email: email,
         password: password,
+        data: {'displayName': name}, // حفظ الاسم في البيانات الوصفية
       );
-
-      // تحديث الاسم داخل Firebase User
-      if (name.isNotEmpty) {
-        await userCredential.user?.updateDisplayName(name);
-      }
 
       if (!mounted) return;
 
@@ -68,25 +64,15 @@ class _SignUpPageState extends State<SignUpPage> {
         context,
         MaterialPageRoute(builder: (_) => const RoleSelectionPage()),
       );
-    } on FirebaseAuthException catch (e) {
+    } on AuthException catch (e) {
+      if (!mounted) return;
       setState(() => _isLoading = false);
-      String message = '';
-      switch (e.code) {
-        case 'email-already-in-use':
-          message = 'Email already in use. Please login or use another email.';
-          break;
-        case 'invalid-email':
-          message = 'Invalid email address.';
-          break;
-        case 'weak-password':
-          message = 'Password is too weak.';
-          break;
-        default:
-          message = e.message ?? 'Signup failed';
-      }
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+      debugPrint('Supabase Auth Error: ${e.message}');
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
     } catch (e) {
+      if (!mounted) return;
       setState(() => _isLoading = false);
+      debugPrint('General Error: $e'); // طباعة الخطأ في الكونسول
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text('Error: $e')));
     }

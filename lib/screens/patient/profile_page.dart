@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final user = FirebaseAuth.instance.currentUser;
+    final user = Supabase.instance.client.auth.currentUser;
 
-    final name = user?.displayName ?? 'No name';
+    final name = user?.userMetadata?['displayName'] ?? 'No name';
     final email = user?.email ?? 'No email';
 
     return Scaffold(
@@ -29,7 +29,7 @@ class ProfilePage extends StatelessWidget {
             const Text('Profile Info',
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
-            const Text('This profile uses Firebase Authentication.'),
+            const Text('This profile uses Supabase Authentication.'),
           ],
         ),
       ),

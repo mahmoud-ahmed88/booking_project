@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../auth/role_selection_page.dart';
 
 class AppointmentScreen extends StatefulWidget {
@@ -23,8 +22,7 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
   List<String> prescriptions = [];
   List<String> notes = [];
 
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final SupabaseClient _supabase = Supabase.instance.client;
 
   Map<String, dynamic>? appointmentData;
 
@@ -35,39 +33,39 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
   }
 
   Future<void> _loadAppointment() async {
-    final doc = await _firestore
-        .collection('users')
-        .doc(_auth.currentUser!.uid)
-        .collection('appointments')
-        .doc(widget.appointmentId)
-        .get();
-    if (doc.exists) {
+    try {
+      final data = await _supabase
+          .from('appointments')
+          .select()
+          .eq('id', widget.appointmentId)
+          .single();
+
       setState(() {
-        appointmentData = doc.data();
+        appointmentData = data;
         selectedAction = appointmentData?['status'] ?? '';
         selectedColor = _actionColor(selectedAction);
         prescriptions = List<String>.from(appointmentData?['prescriptions'] ?? []);
         notes = List<String>.from(appointmentData?['notes'] ?? []);
       });
+    } catch (e) {
+      debugPrint('Error loading appointment: $e');
     }
   }
 
   Future<void> _saveAppointment() async {
-    if (_auth.currentUser == null) return;
+    if (_supabase.auth.currentUser == null) return;
 
     final data = {
       'status': selectedAction,
       'prescriptions': prescriptions,
       'notes': notes,
-      'updatedAt': FieldValue.serverTimestamp(),
+      'updatedAt': DateTime.now().toIso8601String(),
     };
 
-    await _firestore
-        .collection('users')
-        .doc(_auth.currentUser!.uid)
-        .collection('appointments')
-        .doc(widget.appointmentId)
-        .set(data, SetOptions(merge: true));
+    await _supabase
+        .from('appointments')
+        .update(data)
+        .eq('id', widget.appointmentId);
 
     setState(() => isSaved = true);
   }

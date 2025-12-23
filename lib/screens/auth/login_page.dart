@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/thema.dart';
 import 'signup_page.dart';
 import '../auth/role_selection_page.dart';
@@ -19,7 +19,7 @@ class _LoginPageState extends State<LoginPage> {
   bool _passError = false;
   bool _isLoading = false;
 
-  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final SupabaseClient _supabase = Supabase.instance.client;
 
   @override
   void dispose() {
@@ -38,8 +38,8 @@ class _LoginPageState extends State<LoginPage> {
     setState(() => _isLoading = true);
 
     try {
-      // Firebase sign-in
-      await _auth.signInWithEmailAndPassword(
+      // Supabase sign-in
+      await _supabase.auth.signInWithPassword(
         email: _emailCtrl.text.trim(),
         password: _passCtrl.text.trim(),
       );
@@ -53,15 +53,10 @@ class _LoginPageState extends State<LoginPage> {
         context,
         MaterialPageRoute(builder: (_) => const RoleSelectionPage()),
       );
-    } on FirebaseAuthException catch (e) {
+    } on AuthException catch (e) {
       setState(() => _isLoading = false);
 
-      String message = 'Login failed';
-      if (e.code == 'user-not-found') {
-        message = 'No account found. Please sign up first.';
-      } else if (e.code == 'wrong-password') {
-        message = 'Invalid credentials';
-      }
+      String message = e.message;
 
       if (mounted) {
         ScaffoldMessenger.of(context)

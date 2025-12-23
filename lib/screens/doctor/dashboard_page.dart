@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../settings/settings_page.dart';
 import '../doctor/appointment_screen.dart';
 import '../auth/role_selection_page.dart';
@@ -14,8 +13,7 @@ class DashboardPage extends StatefulWidget {
 
 class _DashboardPageState extends State<DashboardPage> {
   ModalRoute<dynamic>? _route;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final SupabaseClient _supabase = Supabase.instance.client;
 
   Future<bool> _onWillPop() async {
     if (!mounted) return true;
@@ -59,7 +57,7 @@ class _DashboardPageState extends State<DashboardPage> {
 
   @override
   Widget build(BuildContext context) {
-    final uid = _auth.currentUser?.uid;
+    final uid = _supabase.auth.currentUser?.id;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF3F4F6),
@@ -100,56 +98,52 @@ class _DashboardPageState extends State<DashboardPage> {
             ]),
             const SizedBox(height: 20),
             _title("Upcoming Appointments"),
-            StreamBuilder<QuerySnapshot>(
-              stream: _firestore
-                  .collection('users')
-                  .doc(uid)
-                  .collection('appointments')
-                  .orderBy('date')
-                  .limit(5)
-                  .snapshots(),
+            StreamBuilder<List<Map<String, dynamic>>>(
+              stream: _supabase
+                  .from('appointments')
+                  .stream(primaryKey: ['id'])
+                  .eq('doctorId', uid ?? '')
+                  .order('date', ascending: true)
+                  .limit(5),
               builder: (context, snapshot) {
                 if (!snapshot.hasData) {
                   return const Center(child: CircularProgressIndicator());
                 }
-                final docs = snapshot.data!.docs;
+                final docs = snapshot.data!;
                 if (docs.isEmpty) {
                   return const Text("No upcoming appointments.");
                 }
                 return Column(
-                  children: docs.map((doc) {
-                    final data = doc.data() as Map<String, dynamic>;
+                  children: docs.map((data) {
                     return _appointmentItem(
                       data['patientName'] ?? 'Unknown',
                       data['time'] ?? '',
                       Icons.person,
                       context,
-                      doc.id,
+                      data['id'].toString(),
                     );
                   }).toList(),
                 );
               },
             ),
             _title("Recent Invoices"),
-            StreamBuilder<QuerySnapshot>(
-              stream: _firestore
-                  .collection('users')
-                  .doc(uid)
-                  .collection('invoices')
-                  .orderBy('date', descending: true)
-                  .limit(5)
-                  .snapshots(),
+            StreamBuilder<List<Map<String, dynamic>>>(
+              stream: _supabase
+                  .from('invoices')
+                  .stream(primaryKey: ['id'])
+                  .eq('doctorId', uid ?? '')
+                  .order('date', ascending: false)
+                  .limit(5),
               builder: (context, snapshot) {
                 if (!snapshot.hasData) {
                   return const Center(child: CircularProgressIndicator());
                 }
-                final docs = snapshot.data!.docs;
+                final docs = snapshot.data!;
                 if (docs.isEmpty) {
                   return const Text("No recent invoices.");
                 }
                 return Column(
-                  children: docs.map((doc) {
-                    final data = doc.data() as Map<String, dynamic>;
+                  children: docs.map((data) {
                     return _invoiceItem(
                         data['patientName'] ?? 'Unknown',
                         data['amount']?.toString() ?? '\$0.00',

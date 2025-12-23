@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/thema.dart';
 import '../../widget/pay_button.dart';
 import '../patient/appointment_booking_page.dart';
@@ -94,11 +94,11 @@ class DoctorProfilePage extends StatelessWidget {
     }
 
     // otherwise load from firestore using doctorId
-    return StreamBuilder<DocumentSnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('doctors')
-          .doc(doctorId)
-          .snapshots(),
+    return StreamBuilder<List<Map<String, dynamic>>>(
+      stream: Supabase.instance.client
+          .from('doctors')
+          .stream(primaryKey: ['id'])
+          .eq('id', doctorId ?? ''),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
@@ -106,13 +106,13 @@ class DoctorProfilePage extends StatelessWidget {
           );
         }
 
-        if (!snapshot.hasData || !snapshot.data!.exists) {
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
           return const Scaffold(
             body: Center(child: Text("Doctor not found.")),
           );
         }
 
-        final data = snapshot.data!.data() as Map<String, dynamic>;
+        final data = snapshot.data!.first;
         final d = Doctor(
           id: doctorId ?? '',
           name: data['name'] ?? 'Unnamed',

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../auth/role_selection_page.dart';
 import 'my_appointments_page.dart';
 import 'doctor_profile_page.dart';
@@ -34,21 +34,20 @@ class DoctorListPage extends StatelessWidget {
           )
         ],
       ),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance.collection('doctors').snapshots(),
+      body: StreamBuilder<List<Map<String, dynamic>>>(
+        stream: Supabase.instance.client.from('doctors').stream(primaryKey: ['id']),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
-          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          if (!snapshot.hasData || snapshot.data!.isEmpty) {
             return const Center(child: Text("No doctors found."));
           }
 
-          final docs = snapshot.data!.docs;
-          final doctors = docs.map((doc) {
-            final data = doc.data() as Map<String, dynamic>;
+          final docs = snapshot.data!;
+          final doctors = docs.map((data) {
             return Doctor(
-              id: doc.id,
+              id: data['id'].toString(),
               name: data['name'] ?? 'Unnamed',
               specialty: data['specialty'] ?? 'General',
               price: data['price']?.toString() ?? '0',

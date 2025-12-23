@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
 import 'core/thema.dart';
 import 'core/config/routes/routes.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'firebase/firebase_options.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.android,
+
+  await Supabase.initialize(
+    url:"https://kasnveeddkvvmyknzkpz.supabase.co" ,
+    anonKey:"sb_publishable_JzKJah8OArz6BUe2f8RIFg_c4rKQs30" ,
   );
+
   runApp(const DocLineApp());
 }
 
