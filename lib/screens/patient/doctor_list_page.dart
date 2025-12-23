@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import '../auth/role_selection_page.dart';
-import 'my_appointments_page.dart';
-import 'doctor_profile_page.dart';
-import '../../models/doctor.dart';
+import '../../core/config/routes/routes.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'appointment_booking_page.dart';
 
 class DoctorListPage extends StatelessWidget {
   const DoctorListPage({super.key});
@@ -12,74 +11,65 @@ class DoctorListPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (_) => const RoleSelectionPage()),
-            );
-          },
-        ),
-        title: const Text('Available Doctors'),
+        title: const Text('قائمة الأطباء'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.calendar_month),
-            onPressed: () {
-              Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (_) => const MyAppointmentsPage()));
+            icon: const Icon(Icons.settings),
+            onPressed: () => Navigator.pushNamed(context, AppRoutes.settings),
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: () async {
+              await FirebaseAuth.instance.signOut();
+              if (!context.mounted) return;
+              Navigator.pushNamedAndRemoveUntil(context, AppRoutes.login, (route) => false);
             },
-          )
+          ),
         ],
       ),
-      body: StreamBuilder<List<Map<String, dynamic>>>(
-        stream: Supabase.instance.client.from('doctors').stream(primaryKey: ['id']),
+      body: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection('users')
+            .where('role', isEqualTo: 'doctor')
+            .snapshots(),
         builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return const Center(child: Text('حدث خطأ في تحميل البيانات'));
+          }
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
-          if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(child: Text("No doctors found."));
+          final docs = snapshot.data!.docs;
+          if (docs.isEmpty) {
+            return const Center(child: Text('لا يوجد أطباء متاحين حالياً'));
           }
-
-          final docs = snapshot.data!;
-          final doctors = docs.map((data) {
-            return Doctor(
-              id: data['id'].toString(),
-              name: data['name'] ?? 'Unnamed',
-              specialty: data['specialty'] ?? 'General',
-              price: data['price']?.toString() ?? '0',
-              bookings: data['bookings'] != null
-                  ? Map<String, List<String>>.from(data['bookings'])
-                  : {},
-            );
-          }).toList();
-
           return ListView.builder(
-            itemCount: doctors.length,
-            itemBuilder: (context, idx) {
-              final d = doctors[idx];
-              return Card(
-                margin:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                child: ListTile(
-                  leading: const CircleAvatar(child: Icon(Icons.person)),
-                  title: Text(d.name),
-                  subtitle: Text("${d.specialty} • ${d.price}"),
-                  trailing: const Icon(Icons.arrow_forward_ios, size: 14),
-                  onTap: () {
-                    Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (_) => DoctorProfilePage(doctor: d)));
-                  },
-                ),
+            itemCount: docs.length,
+            itemBuilder: (context, index) {
+              final data = docs[index].data() as Map<String, dynamic>;
+              return ListTile(
+                leading: const CircleAvatar(child: Icon(Icons.person)),
+                title: Text(data['name'] ?? 'طبيب'),
+                subtitle: Text(data['specialization'] ?? 'عام'),
+                trailing: const Icon(Icons.arrow_forward_ios),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => AppointmentBookingPage(doctor: data),
+                    ),
+                  );
+                },
               );
             },
           );
         },
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.pushNamed(context, AppRoutes.myAppointments);
+        },
+        child: const Icon(Icons.calendar_month),
       ),
     );
   }

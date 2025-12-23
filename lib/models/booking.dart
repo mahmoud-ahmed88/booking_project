@@ -1,28 +1,33 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class Booking {
-  final String id;
+  final String? id;
   final String doctorId;
   final String doctorName;
-  final String dateKey;
-  final String time;
-  final String userId;
+  final String patientId;
+  final String? patientEmail;
+  final String date; // Stored as ISO 8601 String
+  final String status;
 
   Booking({
-    required this.id,
+    this.id,
     required this.doctorId,
     required this.doctorName,
-    required this.dateKey,
-    required this.time,
-    required this.userId,
+    required this.patientId,
+    this.patientEmail,
+    required this.date,
+    required this.status,
   });
 
-  factory Booking.fromMap(Map<String, dynamic> map) {
+  factory Booking.fromMap(Map<String, dynamic> map, String documentId) {
     return Booking(
-      id: map['id'].toString(),
+      id: documentId,
       doctorId: map['doctorId'] ?? '',
       doctorName: map['doctorName'] ?? '',
-      dateKey: map['date'] ?? '', // لاحظ أن العمود في قاعدة البيانات اسمه date
-      time: map['time'] ?? '',
-      userId: map['userId'] ?? '',
+      patientId: map['patientId'] ?? '',
+      patientEmail: map['patientEmail'],
+      date: map['date'] ?? '',
+      status: map['status'] ?? 'pending',
     );
   }
 
@@ -30,9 +35,11 @@ class Booking {
     return {
       'doctorId': doctorId,
       'doctorName': doctorName,
-      'date': dateKey,
-      'time': time,
-      'userId': userId,
+      'patientId': patientId,
+      'patientEmail': patientEmail,
+      'date': date,
+      'status': status,
+      'createdAt': FieldValue.serverTimestamp(), // Add this on creation
     };
   }
 }

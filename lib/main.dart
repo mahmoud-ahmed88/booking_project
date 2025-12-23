@@ -1,18 +1,14 @@
 import 'package:flutter/material.dart';
 import 'core/thema.dart';
 import 'core/config/routes/routes.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:firebase_core/firebase_core.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  await Supabase.initialize(
-    url:"https://kasnveeddkvvmyknzkpz.supabase.co" ,
-    anonKey:"sb_publishable_JzKJah8OArz6BUe2f8RIFg_c4rKQs30" ,
-  );
-
+  await Firebase.initializeApp();
   runApp(const DocLineApp());
 }
+
 
 class DocLineApp extends StatelessWidget {
   const DocLineApp({super.key});
