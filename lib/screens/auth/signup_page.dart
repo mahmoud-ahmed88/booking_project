@@ -43,6 +43,12 @@ class _SignUpPageState extends State<SignUpPage> {
           SnackBar(content: Text(e.message ?? 'حدث خطأ ما')),
         );
       }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('حدث خطأ غير متوقع: $e')),
+        );
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
