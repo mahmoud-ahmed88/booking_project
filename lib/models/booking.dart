@@ -6,8 +6,9 @@ class Booking {
   final String doctorName;
   final String patientId;
   final String? patientEmail;
-  final String date; // Stored as ISO 8601 String
+  final Timestamp date;        // 📅 موعد الحجز
   final String status;
+  final Timestamp? createdAt;  // 🕒 وقت إنشاء الحجز
 
   Booking({
     this.id,
@@ -16,21 +17,26 @@ class Booking {
     required this.patientId,
     this.patientEmail,
     required this.date,
-    required this.status,
+    this.status = 'pending',
+    this.createdAt,
   });
 
-  factory Booking.fromMap(Map<String, dynamic> map, String documentId) {
+  /// 📥 من Firestore
+  factory Booking.fromMap(
+      Map<String, dynamic> map, String documentId) {
     return Booking(
       id: documentId,
       doctorId: map['doctorId'] ?? '',
       doctorName: map['doctorName'] ?? '',
       patientId: map['patientId'] ?? '',
       patientEmail: map['patientEmail'],
-      date: map['date'] ?? '',
+      date: map['date'] as Timestamp,
       status: map['status'] ?? 'pending',
+      createdAt: map['createdAt'],
     );
   }
 
+  /// 📤 إلى Firestore
   Map<String, dynamic> toMap() {
     return {
       'doctorId': doctorId,
@@ -39,7 +45,7 @@ class Booking {
       'patientEmail': patientEmail,
       'date': date,
       'status': status,
-      'createdAt': FieldValue.serverTimestamp(), // Add this on creation
+      'createdAt': FieldValue.serverTimestamp(),
     };
   }
 }
